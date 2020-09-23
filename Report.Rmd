@@ -25,12 +25,6 @@ bibliography: references.bib
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
 options(digits = 7)
-library(tidyverse)
-library(caret)
-library(data.table)
-library(matrixStats)
-library(knitr)
-library(kableExtra)
 ```
 
 ```{r helpers, include = FALSE}
@@ -40,6 +34,10 @@ fmat.num = function(x, d = 0) format(
 fmat.per = function(x, d = 1) sprintf(paste0("%.",d,"f", "%%"), x) 
 ```
 
+
+
+\newpage
+  
 **Data protection statement:** 
 
 _The current project have been done with real data. However, the data in its original form is sensitive and private, and its access requires signature of data protection waiver._ 
@@ -63,11 +61,12 @@ The reasons why IDP displace are multiple and diverse, however they are two main
 
 As the crisis becomes protracted, secondary displacement (i.e. IDP that have displaced to two or more locations different than its origin) becomes more predominant. IDPs on secondary displacement face progressively increased vulnerabilities due to the fact that they not only lose everything at origin, they also lose everything at their initial displaced location, accumulating the deterioration of their living condition due to the fact of displacement itself, but also due to duration of the displacement 
 
-In this document we aim at exploring the possibility of defining a model to predict IDP displacement using predictors related to the displacement and the living condition at departure and arrival locations, leaving aside predictors related to the events. For this we will use monthly collected data at location (community) level for an interval of 20 months. For each month the unit of analysis was the itinerary (aggregated at municipal level). These itineraries were described with three thematic areas of variables: displacement, demographic characteristics, sector needs and reason of displacement. This thematic areas corresponded to progressively more difficult to acquire and less readily available information. The data was split between training and hold-out. Further over the training set we applied a Rolling Origin Forecasting to create the Probe data
+In this document we aim at exploring the possibility of defining a model to predict IDP displacement using predictors related to the displacement and the living condition at departure and arrival locations, leaving aside predictors related to the disaster or conflict events. For this we will use monthly collected data at location (community) level for an interval of 20 months. For each month the unit of analysis was the itinerary aggregated at municipal level. These itineraries were described with three thematic areas of variables: displacement, demographic characteristics, sector needs and reason of displacement; each of them corresponded to progressively more difficult to acquire and less readily available information. The data was split between training and hold-out. Furthermore, over the training set we applied a Rolling Origin Forecasting with six folds to create the Probe data
 
-We defined a baseline model with the historical average displacement by itinerary (historical as to the period covered by the study). Aside we defined our final model in three steps incorporating predictors by thematic batch: the first one for displacement thematic predictors, the second one we added demographic thematic predictors, the third included sector needs and in the fourth we added reasons of displacement. We observed the gains in the Root Mean Squares Error (RMSE) against the baseline model and between the three progressive models as to observe the improvement of the model. Each model was processed with three trained algorithms: Least Absolute Shrinkage and Selection Operator (LASSO), Partial Least Squares (PLS) and Random Forest (RF).
+We defined a baseline model with the historical average displacement by itinerary (historical as to the period covered by the study). Aside we defined our final model in four steps incorporating predictors by thematic batch: the first one for displacement thematic predictors, the second one we added demographic thematic predictors, the third included sector needs and in the fourth we added reasons of displacement. We observed the gains in the Root Mean Squares Error (RMSE) against the baseline model and between the three progressive models as to observe the improvement of the model. Each model was processed with three trained algorithms: Least Absolute Shrinkage and Selection Operator (LASSO), Partial Least Squares (PLS) and Random Forest (RF).
 
-At the end of the process the model and algorithm that provided the lowest RMSE was chosen and its predictive capacity tested against the hold-out data. Aside of the predictive model, the step approach for modellign allowed us to observe the performance of the predictors as they are progressively added into to the model. Finally, but not least, we further obtained a valuable exploratory analysis on determinants of internal displacement.
+At the end of the process the model and algorithm that provided the lowest RMSE was chosen and its predictive capacity tested against the hold-out data. Aside of the predictive model, the step approach for modeling allowed us to observe the performance of each batch of predictors as they are progressively added into to the model. Finally, but not least, we further obtained a valuable exploratory analysis on determinants of internal displacement.
+
 
 \newpage
 
@@ -128,34 +127,34 @@ Displacement variables are intrinsically related with the event of displacement 
 
 ### Number of IDP: the outcome
 
-Before starting with the predictor, first we described the outcome of our model. The distribution of  the number of IDP displaced had a median for the study period of `r fmat.num(summ.displ.num[["Median"]])` with an inter-quantile range of `r fmat.num(summ.displ.num[["3rd Qu."]] - summ.displ.num[["1st Qu."]])`, describing an extremely skewed distribution (Figure 1a). The distribution was a log-normal, thus after logarithmic transformation with base 10 it approximate the normal distribution (Figure 1b). The center of the logarithmic distribution was at `r fmat.num(summ.lg.displ.num[["Mean"]], 2)` (`r fmat.num(summ.lg.displ.num[["Mean"]], 2)` standard deviation - SD)    
+Before starting with the predictor, first we described the outcome of our model. The distribution of  the number of IDP displaced had a median for the study period of `r fmat.num(summ.displ.num[["Median"]])` with an inter-quantile range of `r fmat.num(summ.displ.num[["3rd Qu."]] - summ.displ.num[["1st Qu."]])`, describing an extremely skewed distribution (Figure 1a). The distribution was a log-normal, thus after logarithmic transformation with base 10 it approximate the normal distribution (Figure 1b). The center of the logarithmic distribution was at `r fmat.num(summ.lg.displ.num[["Mean"]], 2)` (`r fmat.num(sd.lg.displ.num, 2)` standard deviation - SD)    
 
 ```{r figure1x2, fig.show = "hold", out.width = "50%", fig.cap = "Density distribution of number of IDPs displaced", fig.subcap = c("Non-transformed distribution", "Log10-transformed distribution")}
 p.displ.num
 p.lg.displ.num
 ```
 
-Given the extreme skewness of the outcome and the positive response to logarithmic transformation, we decided to develop our model in its log-transformed state. The logarithmic transformation offered a more normal distribution likely to perform beter in our prediction model, as previously proved by Anonymous (2018). Nonetheless, a more normally distributed outcome came at expenses of limitations on the model's interpretability. Despite this lost on interpretability, priority was given to model performance as the main objective of the study was predictive and not explanatory. Furthermore, the logarithmic data could be transformed back to refers to the original unit in its natural scale.
+Given the extreme skewness of the outcome and the positive response to logarithmic transformation, we decided to develop our model in its log-transformed state. The logarithmic transformation offered a more normal distribution likely to perform better in our prediction model, as previously proved by Anonymous (2018). Nonetheless, a more normally distributed outcome came at expenses of limitations on the model's interpretability. Despite this lost on interpretability, priority was given to model performance as the main objective of the study was predictive and not explanatory. Furthermore, the logarithmic data could be transformed back to refers to the original unit in its natural scale.
 
-From now on, the number of IDP displaced was treated in its transformed scale and all graphs and result tables presented below refers its logarithmic transformation.
+From now on, the number of IDP displaced was treated in its transformed scale and all graphs and result tables presented below refers its logarithmic transformation, unless indicated otherwise.
 
 ### Time 
 
-IDP displacement is mainly influenced by critical and sudden events, which could be somewhat stationary such as conflict and disaster. However, specially on protracted crisis, more contextual factor such as livelihood, food and access to services would start playing a important role on IDP displacement. These new determinants gain importance at the stage of settleling from the crisis and are influence by time, and indirectly IDP displacement might feel the effect of time on these deteminants. 
+IDP displacement is mainly influenced by critical and sudden events, which could be somewhat stationary such as conflict and disaster. However, specially on protracted crisis, more contextual factors such as livelihood, food and access to services would start playing a important role on IDP displacement. These new determinants gain importance at the stage of settleling from the crisis and are influence by time; consequently IDP displacement might also feel indirectly the effect of time on these deteminants. 
 
-When we observe the distribution of displacement across the study period we appreciate a more or less homogeneous base of displacement across time, pointing ato a protracted crisis scenario with an estable base of displacement likely to be more determine by contextual factors than sudden events. Reflection of this is the overall little variation of displacement from one month to another with a SD of `r fmat.num(sd.time.lg, 2)`. Despite of this general estability, we also appreciate peaks with sudden onsets of displacement (Figure 4a). It is likely that these peaks are cause by sudden events of violence and/or natural disaster, accounting for the greater of the variability od IDP displacement through time.    
+When we observe the distribution of displacement across the study period we appreciate a more or less homogeneous base of displacement across time, pointing to a protracted crisis scenario with an estable base of displacement likely to be more determined by contextual factors than sudden events. Reflection of this is the overall little variation of displacement from one month to another with a SD of `r fmat.num(sd.time.lg, 2)`. Despite of this general estability, we also appreciate peaks with sudden onsets of displacement (Figure 4a). It is likely that these peaks are cause by sudden events of violence and/or natural disaster, accounting for the greater of IDP displacement variability through time.    
 ```{r figure2x2, fig.show = "hold", out.width = "50%", fig.cap = "Trend of IDP displacement across study period", fig.subcap = c("Trend of IDP displacement across study period", "Relationship between lagged dispalcement and current displacement")}
 p.time.displ
 p.lag.displ
 ```
 
-Our model needed to have the capacity to capture the stable trend, at the same time that the challenge of capture the sudden peaks in displacement. Factors inherent to dispalcement and more socio-demographic variables are likely to better capture the estable base of displacement (figure 4b - show hoe the dispalcement of the previous month could serve as predictor of the next month, which in cases of high intermonth vairability would not be the case). 
+Our model needed to have the capacity to capture the stable trend, at the same time that the challenge of capture the sudden peaks in displacement. Factors inherent to dispalcement and more socio-demographic variables are likely to better capture the estable base of displacement (figure 4b - show how the dispalcement of the previous month could serve as predictor of the next month, which in cases of high inter-month variability would not be the case. 
 
-In addition, and to complement the performance of our model, Information on critical and sudden events would be key to capture the peaks of displacement, despite this information is rather scarce and not inmediately available.
+In addition, to complement the performance of our model, information on critical and sudden events would be key to capture the peaks of displacement, despite this information is rather scarce and not inmediately available.
 
 ### Itineraries
 
-Regarding the influence of the itineraries in the displacement of IDPs, in Figure 3 we can observe that mainly two provinces (LAN and CAV) accumulate a great part of the displacements, both for the departures and the arrivals. Other provinces are more likely to be provinces of arrival than of departure, such as ZAS, CAV and ILS, reflection of inter province displacement. When we observe the SD of the province averages it is `r fmat.num(sd.lg.displ.depart, 2)` for both, provinces of departure and arrival. These diversity in the displacement at the province level is likely to further powered at municipal level and would be pointing at the effect of the itinerary in the displacement of IDP.
+Regarding the influence of the itineraries in the displacement of IDPs, in Figure 3 we can observe that mainly two provinces (LAN and CAV) accumulate a great part of the displacements, both for the departures and the arrivals. Other provinces are more likely to be provinces of arrival than of departure, such as ZAS, CAV and ILS, reflection of inter province displacement. When we observe the SD of the province averages it is `r fmat.num(sd.lg.displ.depart, 2)` for both, provinces of departure and arrival. This diversity in the displacement at the province level is likely to be further powered at municipal level and would be pointing at the effect of the itinerary in the displacement of IDP.
 
 ```{r figure3x2, fig.show = "hold", out.width = "50%", fig.ncol = 2, fig.align = "center", fig.cap = "Distribution of IDPs displaced (log) by province", fig.subcap = c("Province of departure", "Province of arrival")}
 p.depart.loc
@@ -170,7 +169,7 @@ p.hist.avg.disp
 
 ### Number of times municipality of departure/arrival
 
-Another important element of the itinerary, is how many times displacement have departed or arrived to a municipality.  Observing Figure 5 we could see that that number of times departed from a municipality shown a linear trend with IDP displacement and with relevant variability (SD = `r fmat.num(sd.ndepart, 2 )`). However, this was not as clear for number of time arrived to a municipality which follow a more stable trend (SD = `r fmat.num(sd.narrive, 2 )`), still it shown centain vairability that coudl be useful to predict certain scenerarios. 
+Another important element of the itinerary, is how many times IDPs have departed or arrived to a municipality.  Observing Figure 5 we could see that that number of times departed from a municipality shown a linear trend with IDP displacement and with relevant variability (SD = `r fmat.num(sd.ndepart, 2 )`). However, this was not as clear for number of time arrived to a municipality which follow a more stable trend (SD = `r fmat.num(sd.narrive, 2 )`), still it shown centain vairability that could capture certain scenerarios. 
 
 ```{r figure5x2, fig.show = "hold", out.width = "50%", fig.ncol = 2, fig.align = "center", fig.cap = "Distribution of IDPs displaced (log) by number of times departed/arrives to a municipality", fig.subcap = c("Number of time departed from municipality", "Number of time arrived to municipality")}
 p.n.departed
@@ -183,7 +182,7 @@ Meanwhile the historical average displacement served as measure of density of di
 
 The itinerary is also characterized for the distance that comprise between the departure location to the arrival. The distance of the itinerary was calculated by estimating the geodesic distance from the municipal centroids corresponding to each itinerary. Although distance was also a log-normal variable skewed to the right, we studied it in its original form. 
 
-A priory would be expected that IDPs displace preferentially shorter distances, afollowing a negative linear relationship between distance and displacement. Nonetheless, when we observe the relationship we see it is not a clear linear relationship. Although generally larger distances imply lower loads of displacement, the shortest distances also imply lower numbers of IDP displacement.
+A priory would be expected that IDPs displace preferentially shorter distances, following a negative linear relationship between distance and displacement. Nonetheless, when we observe the relationship we see it is not a clear linear relationship. Although generally larger distances imply lower loads of displacement, the shortest distances also imply lower numbers of IDP displacement.
 
 ```{r figure6x2, fig.show = "hold", out.width = "50%", fig.cap = "Relationship between distance and displacement", fig.subcap = c("Distribution of distances", "Relationship between distance and IDP dispalcement (log)")}
 p.distance
@@ -403,9 +402,9 @@ gridExtra::grid.table(model_eval_2, theme = gridExtra::ttheme_minimal(base_size 
 
 At the third model we entered the sector needs predictors. As we mentioned before during the exploratory analysis, these set of variables was susceptible of PCA. We conducted the analysis over the five folds of the training data. We targeted to keep the mode number of components among the five folds that would account for at least 90% of the variance. At the end we kept four components.
 
-PCA came at expenses of lost of interpretability fo the model, however the loading of the component would help to better understand what each component represent. This way, in Figure 13 we plotted the loading in a heat map for the component of sector needs at departure and arrival. The darker the blue, the strongest is the weight of a original variable over the component (i.e. the more relevant is the variable to explain the component). Same, but in inverse direction (i.e. negative relationship), for dark red.
+PCA came at expenses of lost of interpretability of the model, however the loading of the component would help to better understand what each component represent. This way, in Figure 13 we plotted the loading in a heat map for the components of sector needs at departure and arrival. The darker the blue, the strongest is the weight of a original variable over the component (i.e. the more relevant is the variable to explain the component). Same, but in inverse direction (i.e. negative relationship), for dark red.
 
-As we could see in Figure 13a, the first four components for sector needs at departure municipalities represented: 1) the first component represent those municipalities with average number of persons in needs across all sectors; 2) the second one identify those municipalities with greater number of person in need of livelihood; 3) the third component outstood for those municipalities with significantly reduce number of persons in need of security; 4) the fourth and last chosen component referred to those municipalities with greater number of persons in need of education.
+As we could see in Figure 13a, the first four components for sector needs at departure municipalities represented: 1) the first component represent those municipalities with average number of persons in needs across all sectors; 2) the second one identify those municipalities with greater number of person in need of livelihood; 3) the third component outstood for those municipalities with reduced number of persons in need of security; 4) the fourth and last chosen component referred to those municipalities with greater number of persons in need of education.
 
 In Figure 13b we can do similar analysis for the sector needs at arrival, noticing that 1) the first component, similarly to departure, represent those municipalities with average number of persons in needs across all sectors; 2) the second highlights those municipalities with less number of persons in need of livelihood, and up to a less extend education; 3) the third refer to municipalities with low number of persons in need of basic services; 4) the fourth and last selected component up to less extent referred to municipalities with greater number of persons in need of security.
 
@@ -414,7 +413,7 @@ p.pca.depart
 p.pca.arrival
 ```
 
-After running the three algorithms over our model we observe a slight improvement on performance in LASSO and PLS, and a slight worsening RF. Although changes are very minimal, at these levels of accuracy even the slightest changes are significant. The RF method still performs better than LASSO and PLS consolidating its predominance. Regarding the new predictors, we can observe that three out of four of the component have entered in the top 10 more important predictors, thsi is true also for the RF method.
+After running the three algorithms over our model we observe a slight improvement on performance in LASSO and PLS, and a slight worsening RF (Figure 14). Although changes are very minimal, at these levels of accuracy even the slightest changes are significant. The RF method still performs better than LASSO and PLS consolidating its predominance. Regarding the new predictors, we can observe that three out of four of the component have entered in the top 10 more important predictors; this is true also for the RF method.
 
 ```{r figure 14, echo = FALSE, fig.cap = 'Model 3 performance', fig.subcap = c('Predictor importance ranking', 'Model evaluation parameters'), out.width = '.49\\linewidth', fig.align = 'center'}
 
@@ -424,7 +423,7 @@ grid::grid.newpage()
 gridExtra::grid.table(model_eval_3, theme = gridExtra::ttheme_minimal(base_size = 15), rows = rownames(NULL))
 ```
 
-**The best RMSE was of `r fmat.num(best_3$RMSE, 4)` with `r best_3$model` method. Overall, most important predictor, was still Rate of arrivals (log), which performed best fro LASO and LSP method, and second best fro RF. Historical average displacement of the itinerary was the best for performing predictor for RF**
+**The best RMSE was of `r fmat.num(best_3$RMSE, 4)` with `r best_3$model` method. Overall, most important predictor, was still Rate of arrivals (log), which performed best for LASO and PLS method, and second best for RF. Historical average displacement of the itinerary was the best for performing predictor for RF**
 
 
 ## Model 4: Dispalcement Demography, Sectorial Needs and Reasons of Dispalcement
@@ -445,9 +444,9 @@ Finally, we reach our forth model in which we included the reasons of displaceme
 * Pull factor - No other option, there was no other possibility than to arrive at this location
 * Pull factor - Other: other non-specified factor at arrival
 
-The model accuracy is already outstanding and we could expect the addition of these factors would lay on very slight improvements on its performance, if any. However, these improvement prove that the addition of this factor improve predicting capacity fro IDP displacement. The RF was still and finally the best performing method. Regarding the importance of the new predictors, we observe that only one Pull factor - Improved economy position among the ten best performing predictors as average rank of the three models.
+The model accuracy is already outstanding and we could expect the addition of these factors would lay on very slight improvements on its performance, if any. Actually, after observing Figure 15 we observe the same patter as for model 3: LASSO and PLS experience a small improvement, while RF a small worsening. Nonetheless, RF was still and finally the best performing method. Regarding the importance of the new predictors, we observe that none pull/push factor have position among the best performing predictors for RF (Figure 15), rather they are all sequentially at the bottom of the rank.
 
-```{r figure 15, echo = FALSE, fig.cap = 'Model 4 performance', fig.subcap = c('Predictor importance ranking', 'Model evaluation parameters'), out.width = '.49\\linewidth', fig.align = 'center'}
+```{r figure 15, echo = FALSE, fig.cap = 'Model 4 performance', fig.subcap = c('Predictor importance ranking (RF only)', 'Model evaluation parameters'), out.width = '.49\\linewidth', fig.align = 'center'}
 
 p.var_importance_4
 
@@ -476,11 +475,11 @@ kableExtra::kbl(
 
 ```
 
-As we could see from Figure 16, the observed IDP displacement was tightly fitted by the prediction. Nonetheless there were few cases that significantly deviated form the regression line. This cases tend to be more on the lowest values of displacement, indicating our model would have greater difficulty on accurately predicting lower values than larger values. In future works, a look into the residuals could help to clean the model by removing them from the training and achieve even more accurate fitness.
+As we could see from Figure 16, the observed IDP displacement was tightly fitted by the prediction. Nonetheless there were few cases that significantly deviated form the regression line. These cases tend to be more on the lowest values of displacement, indicating our model would have greater difficulty on accurately predicting lower values than larger values. In future works, a look into the residuals could help to clean the model by removing them from the training and achieve even more accurate fitness.
 
-When observing at predictor importance (Figure 16) could conclude with three main observations: 1) Three main predictors account for the greates part of the improvements in RMSE during RF iterations; 2) Predictors that capture the IDP displacement in its composition tend to perform better than those that are composed independently of IDP displacement; 2) Predictors at arrival tend to perform better than at departure, which could be explained due to the limitation is the collected data, vis-a-vis data on departure is not complete and only refer the most common location of departure for each location of arrival. 
+When observing at predictor importance (Figure 16) could conclude with three main observations: 1) Three main predictors account for the greates part of the improvements in RMSE during RF iterations; 2) Predictors that capture the IDP displacement in its composition tend to perform better than those that are composed independently of IDP displacement; 2) Predictors at arrival tend to perform better than at departure, which could be explained due to limitations in the collected data, vis-a-vis data at departure is not complete and only refer the most common location of departure for each location of arrival. 
 
-For a matter of computational efficiency, the whole model could be reduced tot he first four indicator and still preduce very similar RMSE values to the ones reported here. The complete list fo predictor importance can be found in Annex B. 
+For a matter of computational efficiency, the whole model could be reduced tot he first four indicator and still produce very similar RMSE values to the ones reported here. The complete list fo predictor importance can be found in Annex B. 
 
 ```{r figure16, echo = FALSE, message = FALSE, fig.show = "hold", out.width = "50%", fig.cap = "IDP rates and displacement", fig.subcap = c("Regression fitness between observed and prediction", "Predictor importance for RF method")}
 p.test_final
@@ -491,7 +490,7 @@ When drawing the time series of the prediction and the observed IDP displacement
 
 \newpage
 \blandscape
-```{r figure17, fig.show = "hold", out.width = "100%", out.height= "100%", fig.cap = "Observed and predicted trend of IDP displacement (log) by province of arrival", fig.align = 'center'}
+```{r figure17, fig.show = "hold", out.width = "95%", out.height= "100%", fig.cap = "Observed and predicted trend of IDP displacement (log) by province of arrival", fig.align = 'center'}
 p.trend_final
 ```
 \elandscape
@@ -500,11 +499,13 @@ p.trend_final
 
 # Conclusions
 
-This study had allow us to develop an accurate prediction model for IDP displacement. Furthermore, we were able to see how meanwhile displacement variables are not enough to outperform the historical average, the inclusion of demographic predictors increases significantly the accuracy of the model. The  inclusion of sector needs and reasons for displacement provide little gains, if any, into the model and can be left aside. The lack of improvement provided by this variables can be either inherent to the data collected or to the type of predictor derived from them. Other type of predictors to refer persons in need and pull and push factors might become more relevant than the ones here presented.
+This study had allow us to develop an accurate prediction model for IDP displacement. Furthermore, we were able to see how meanwhile displacement variables are not enough to outperform the historical average, the inclusion of demographic predictors increases significantly the accuracy of the model. Otherwise, the inclusion of sector needs and reasons for displacement provide little gains, if any, into the model and can be left aside. The lack of improvement provided by these predictors can be either inherent to the data collected or to the type of predictor derived from them. Other type of predictors to refer persons in need and pull and push factors might become more relevant than the ones here presented.
 
-However, it could be indeed a desired side-effect. Data inherent to displacement and demography is the best perfoming in the model and this data is available for all itineraries, even those where there have never been displacement. This way, we could run the model in a complete data set of itineraries, including those where there have never been displacement (i.e. outcome = 0) to predict not only quantity of displacement by "if" there is displacement.
+However, it could be indeed a desired side-effect. Data inherent to displacement and demography is the best performing in the model and this data is available for all itineraries, even those where there have never been displacement. This way, we could run the model in a complete data set of itineraries, including those where there have never been displacement (i.e. outcome = 0) to predict not only quantity of displacement by "if" there is displacement.
 
-This prove that, for the purpose of predicting IDP displacement, there is no special need to load data collection with with additional variables on contextual factors. Although it will not harm the model, the efficiency of the gains would be questionable. However, it is indeed important to complement the displacement data with demographic variables.
+This prove that, for the purpose of predicting IDP displacement, there is no special need to load data collection with with additional variables on contextual factors. Although it will not harm the model, the efficiency of the gains would be questionable. However, it is indeed important to complement the displacement data with demographic variables. 
+
+In this line, we have also observed that variables that were strongly associated with displacement in the exploratory analysis, did not necessarily translated in good performance in the model, such as Number of time departed from municipality or IDP rates at arrival. Likewise, categorical variables such Province of departure and arrival increased significantly computational requirement, but were overall the worst performing variables, specially for RF.
 
 We also believe that the availability of data at a low level such as the municipal level have allow the good performance of the model. Other studies, such as Anonymous (2018) have study the matter ar provincial level with significantly lowers RMSE (~0.65).
 

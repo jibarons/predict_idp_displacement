@@ -1,3 +1,21 @@
+#--------------------------------------------------------------------------------
+# @Title: Analysis.R
+# @Author: Julian Ibarguen
+# @Date created: 23.09.2020
+# @Re: predict_idp_displacement
+# -----------------------------------------------------------------------------
+# Notes:
+# The whole project is uploaded to GitHub: 
+#   https://github.com/ibarons/predict_idp_displacement
+#
+# The whole project runs in ~10 min.. It includes the training of Random Forest 
+#   algorithms over 4 models.
+# 
+# All packages are installed automatically, however some packages might need compilation,
+#   thus might require to actively accept it.
+#-------------------------------------------------------------------------------
+
+
 ########################### SET-UP PACKAGES ####################################
 
 start.all <- Sys.time()
@@ -20,31 +38,36 @@ check.packages <- function(pkg){
 }
 
 packages.project <- c(
-  "readxl", "lubridate", "scales", "dplyr", "tidyr", "forcats", "purrr", 
-  "ggplot2", "grid", "gridExtra", "caret", "matrixStats", "stats", "Rborist",
-  "pls", "glmnet", "Matrix"
+  "stringi","readxl", "lubridate", "scales", "dplyr", "tidyr", "forcats", "purrr",
+  "knitr", "kableExtra", "rmarkdown", "ggplot2", "grid", "gridExtra",
+  "caret", "matrixStats", "stats", "Rborist", "pls", "glmnet", "Matrix"
 )
 
 check.packages(packages.project)
 
 
-################################ LOAD DATA #####################################
+################################ LOAD & CLEAN DATA #############################
 
-# Population displacement data
+# Download data
 
-db_to.from <- read.csv("PH125.9x_JIO/db/pop.displacement.flow.csv")
-distances_index <- read.csv("PH125.9x_JIO/db/itinerary.distances.csv")
-pop_concent <- read.csv("PH125.9x_JIO/db/pop.concentration.csv")
-pop.in.need <- read.csv("PH125.9x_JIO/db/pop.in.need.csv")
+distances_index <- read.csv(url(
+  "https://raw.githubusercontent.com/ibarons/predict_idp_displacement/master/db/itinerary.distances.csv"
+))
+db_to.from <- read.csv(url(
+  "https://raw.githubusercontent.com/ibarons/predict_idp_displacement/master/db/pop.displacement.flow.csv"
+))
+pop_concent <- read.csv(url(
+  "https://raw.githubusercontent.com/ibarons/predict_idp_displacement/master/db/pop.concentration.csv"
+))
+pop.in.need <- read.csv(url(
+  "https://raw.githubusercontent.com/ibarons/predict_idp_displacement/master/db/pop.in.need.csv"
+))
 
 # ############################ FORMAT & CLEAN DATA ###############################
 
 ###### COMPILATION & CLEAN
-# 1. Join Population in Need for arrival locations
-# 2. Join Population in need for departure location
-# 3. Join Population concentrations
-# 4. Join distances departure to arrival
-# 5. Clean missing values and not targeted variables 
+# 1. Join data bases
+# 2. Clean missing values and not targeted variables 
 
 db_final <- dplyr::left_join(
   db_to.from, pop.in.need, 
@@ -91,7 +114,7 @@ db_final <- dplyr::left_join(
       ~ dplyr::if_else(is.na(.) & total.pop_at.departure == 0, 0, .) 
     )
   ) %>%
-  # impute missing values for push factors (median) by closest level available
+  # impute missing values for push factors (median) by closest admin level available
   dplyr::group_by(month.seq, depart.from_mun.pcode) %>%
   dplyr::mutate(dplyr::across(
     dplyr::matches("^push\\."), ~ dplyr::if_else(is.na(.), median(., na.rm = TRUE), .)
@@ -119,7 +142,7 @@ db_final <- dplyr::left_join(
   )) %>%
   dplyr::ungroup() %>%
   dplyr::filter(
-    pop.group == "idp", # Filter out no target group
+    pop.group == "idp", # Filter out no target group (no idp)
     displ.num != 0, # Clean no-displacement
     !(displ.num != 0 & is.na(depart.from_pro.pcode)), # Clean missing departure location
     !(displ.num != 0 & depart.from_mun.pcode == "abroad") # "Clean "abroad" departure
@@ -234,7 +257,7 @@ p.time.displ <- ggplot2::ggplot(
   ggplot2::scale_x_continuous(breaks = 0:17) +
   ggplot2::labs(
     x = "Months sequence", y = "number of IDPs (log)",
-    caption = "Red dashed line represent the historical average; Blue dashed line shows the median displacement per month"
+    caption = "Red dashed line represent the historical average; Blue dashed line shows the mean displacement per month"
   ) +
 ggplot2::theme_bw()
 
@@ -1203,6 +1226,7 @@ model_eval_1 <- c()
 var_import_1 <- c() 
 
 #### LASSO
+set.seed(20200328)
 start <- Sys.time()
 print(start)
 fit_glmnet_1 <- caret::train(
@@ -1225,6 +1249,7 @@ var_import_1[["glmnet"]] <- data.frame(
 )
 
 #### PARTIAL LEAST SQUARES
+set.seed(20200328)
 start <- Sys.time()
 print(start)
 fit_pls_1 <- caret::train(
@@ -1248,17 +1273,18 @@ var_import_1[["pls"]] <- data.frame(
 )
 
 ##### RANDOM FOREST
+set.seed(20200328)
 start <- Sys.time()
 print(start)
 fit_Rborist_1 <- caret::train(
   lg.displ.num ~ ., data = db_model_1, method = "Rborist", nTree = 250,
   quantiles = TRUE, trControl = t.control,
-  tuneGrid = expand.grid(predFixed = seq(13, 15, 1), minNode = seq(25, 27, 1)) 
+  tuneGrid = expand.grid(predFixed = 15, minNode = 27) 
 )
 end <- Sys.time()
 print(end-start)
 # Evaluation
-plot(fit_Rborist_1)
+#plot(fit_Rborist_1)
 model_eval_1[["Rborist"]] <- data.frame(
   model = "RF",
   fit_Rborist_1$results[which.min(fit_Rborist_1$results$RMSE),]
@@ -1335,6 +1361,7 @@ model_eval_2 <- c()
 var_import_2 <- c() 
 
 #### LASSO
+set.seed(20200328)
 start <- Sys.time()
 print(start)
 fit_glmnet_2 <- caret::train(
@@ -1357,6 +1384,7 @@ var_import_2[["glmnet"]] <- data.frame(
 )
 
 #### PARTIAL LEAST SQUARES
+set.seed(20200328)
 start <- Sys.time()
 print(start)
 fit_pls_2 <- caret::train(
@@ -1380,17 +1408,18 @@ var_import_2[["pls"]] <- data.frame(
 )
 
 ##### RANDOM FOREST
+set.seed(20200328)
 start <- Sys.time()
 print(start)
 fit_Rborist_2 <- caret::train(
   lg.displ.num ~ ., data = db_model_2, method = "Rborist", nTree = 250,
   quantiles = TRUE, trControl = t.control,
-  tuneGrid = expand.grid(predFixed = seq(28, 30, 1), minNode = seq(1, 5, 1)) 
+  tuneGrid = expand.grid(predFixed = 29, minNode = 1) 
 )
 end <- Sys.time()
 print(end-start)
 # Evaluation
-plot(fit_Rborist_2)
+#plot(fit_Rborist_2)
 model_eval_2[["Rborist"]] <- data.frame(
   model = "RF",
   fit_Rborist_2$results[which.min(fit_Rborist_2$results$RMSE),]
@@ -1438,6 +1467,7 @@ p.var_importance_2 <- var_importance_2 %>%
         x = predictor, xend = predictor, y = rank, yend = 0), color  = "black", size = 0.3) +
       ggplot2::scale_y_continuous(breaks = seq(0, max(.$rank), 10)) +
       ggplot2::labs(
+        x = "predictors", 
         caption = "Method's importance coefficient were converted to ranks for comparability. 
         The greater the rank, the more important the predictor. Points with same ranking overlap. 
         Municipalities of departure and arrival are exlcuded form the figure."
@@ -1469,6 +1499,7 @@ model_eval_3 <- c()
 var_import_3 <- c() 
 
 #### LASSO
+set.seed(20200328)
 start <- Sys.time()
 print(start)
 fit_glmnet_3 <- caret::train(
@@ -1491,6 +1522,7 @@ var_import_3[["glmnet"]] <- data.frame(
 )
 
 #### PARTIAL LEAST SQUARES
+set.seed(20200328)
 start <- Sys.time()
 print(start)
 fit_pls_3 <- caret::train(
@@ -1514,17 +1546,18 @@ var_import_3[["pls"]] <- data.frame(
 )
 
 ##### RANDOM FOREST
+set.seed(20200328)
 start <- Sys.time()
 print(start)
 fit_Rborist_3 <- caret::train(
   lg.displ.num ~ ., data = db_model_3, method = "Rborist", nTree = 250,
   quantiles = TRUE, trControl = t.control,
-  tuneGrid = expand.grid(predFixed = seq(34, 38, 1), minNode = seq(1, 3, 1)) 
+  tuneGrid = expand.grid(predFixed = 37, minNode = 2) 
 )
 end <- Sys.time()
 print(end-start)
 # Evaluation
-plot(fit_Rborist_3)
+#plot(fit_Rborist_3)
 model_eval_3[["Rborist"]] <- data.frame(
   model = "RF",
   fit_Rborist_3$results[which.min(fit_Rborist_3$results$RMSE),]
@@ -1576,6 +1609,7 @@ p.var_importance_3 <- var_importance_3 %>%
         caption = "The greater the value, the more important the predictor."
       ) +   
       ggplot2::labs(
+        x = "predictors",
         caption = "Method's importance coefficient were converted to ranks for comparability. 
         The greater the rank, the more important the predictor. Points with same ranking overlap.
         Municipalities of departure and arrival are exlcuded form the figure."
@@ -1606,6 +1640,7 @@ model_eval_4 <- c()
 var_import_4 <- c() 
 
 #### LASSO
+set.seed(20200328)
 start <- Sys.time()
 print(start)
 fit_glmnet_4 <- caret::train(
@@ -1628,6 +1663,7 @@ var_import_4[["glmnet"]] <- data.frame(
 )
 
 #### PARTIAL LEAST SQUARES
+set.seed(20200328)
 start <- Sys.time()
 print(start)
 fit_pls_4 <- caret::train(
@@ -1651,17 +1687,18 @@ var_import_4[["pls"]] <- data.frame(
 )
 
 ##### RANDOM FOREST
+set.seed(20200328)
 start <- Sys.time()
 print(start)
 fit_Rborist_4 <- caret::train(
   lg.displ.num ~ ., data = db_model_4, method = "Rborist", nTree = 250,
   quantiles = TRUE, trControl = t.control,
-  tuneGrid = expand.grid(predFixed = seq(46, 50, 1), minNode = seq(2, 4, 1)) 
+  tuneGrid = expand.grid(predFixed = 50, minNode = 2) 
 )
 end <- Sys.time()
 print(end-start)
 # Evaluation
-plot(fit_Rborist_4)
+#plot(fit_Rborist_4)
 model_eval_4[["Rborist"]] <- data.frame(
   model = "RF",
   fit_Rborist_4$results[which.min(fit_Rborist_4$results$RMSE),]
@@ -1709,6 +1746,7 @@ p.var_importance_4 <- var_importance_4 %>%
         x = predictor, xend = predictor, y = rank, yend = 0), size = 0.5) +
       ggplot2::scale_y_continuous(breaks = seq(0, max(.$rank), 10)) +
       ggplot2::labs(
+        x = "predictors", 
         caption = "Only the ranking for the best performing method is presented. 
         Municipalities of departure and arrival are exlcuded form the figure."
       ) +      
@@ -1839,4 +1877,4 @@ rmarkdown::render("PH125.9x_JIO/Report.Rmd")
 
 
 end.all <- Sys.time()
-print(end.all-start.all)
+print(end.all - start.all)
