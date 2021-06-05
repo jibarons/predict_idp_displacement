@@ -6,3 +6,10 @@ We defined a baseline model with the historical average displacement by itinerar
 
 At the end of the process the model and algorithm that provided the lowest RMSE was chosen and its predictive capacity tested against the hold-out data. Aside of the predictive model, the step approach for modeling allowed us to observe the performance of each batch of predictors as they are progressively added into to the model. Finally, but not least, we further obtained a valuable exploratory analysis on determinants of internal displacement.
 
+## Data protection statement:
+_The current project have been done with real data. However, the data in its original form is sensitive and
+private, and its access requires signature of data protection waiver.
+To ensure data protection, the original data have been altered: locations names and codes do not correspond
+to its original; population and displacement figures have been transformed and all data have been aggregated
+to a superior administrative level; among other alterations in the data and in the report. 
+The original data and its processing script can be requested and will be provided prior signature of standard data protection waiver._
